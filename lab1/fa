@@ -1,0 +1,12 @@
+digraph finite_automata {
+	node [shape=doublecircle]
+	Q
+	node [shape=circle]
+	S -> B [label=a]
+	B -> D [label=a]
+	B -> B [label=b]
+	B -> S [label=c]
+	D -> D [label=a]
+	D -> S [label=b]
+	D -> Q [label=c]
+}
