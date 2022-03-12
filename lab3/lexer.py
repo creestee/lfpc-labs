@@ -110,7 +110,8 @@ class Lexer:
 				tokens.append(Token(TT_PLUS, pos_start=self.pos))
 				self.advance()
 			elif self.current_char == '-':
-				tokens.append(self.make_minus_or_arrow())
+				tokens.append(Token(TT_MINUS, pos_start=self.pos))
+				self.advance()
 			elif self.current_char == '*':
 				tokens.append(Token(TT_MUL, pos_start=self.pos))
 				self.advance()
@@ -194,13 +195,6 @@ class Lexer:
 
 		tok_type = TT_KEYWORD if id_str in KEYWORDS else TT_IDENTIFIER
 		return Token(tok_type, id_str, pos_start, self.pos)
-
-	def make_minus(self):
-		tok_type = TT_MINUS
-		pos_start = self.pos.copy()
-		self.advance()
-
-		return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
 	def make_not_equals(self):
 		pos_start = self.pos.copy()
