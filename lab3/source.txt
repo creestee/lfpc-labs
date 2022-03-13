@@ -1,6 +1,7 @@
-VAR a,b 
+var a,b 
+b = "test"
 a = 23
-WHILE a > 2 DO
-    FOR i = 0 TO 24 
-        IF b == "test"
-            a = a + 1
+while a > 2 DO
+    for i = 0 to 24 
+        if b == "test"
+            a = a - 1
