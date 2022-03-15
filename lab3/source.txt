@@ -1,7 +1,11 @@
 var a,b 
+
+# step 1
+
 b = "test"
 a = 23
-while a > 2 DO
+
+while a > 2 do
     for i = 0 to 24 
         if b == "test"
             a = a - 1

@@ -1,3 +1,4 @@
+from ast import While
 import string
 
 DIGITS = '0123456789'
@@ -10,20 +11,24 @@ TOKENS = {
     "STRING": 'STRING',
     "IDENTIFIER": 'IDENTIFIER',
     "KEYWORD": 'KEYWORD',
-    "ASSIGN": 'ASSIGN',       # :
-    "PLUS": 'PLUS',           # +
-    "MINUS": 'MINUS',         # -
-    "MUL": 'MULTIPLY',        # *
-    "DIV": 'DIVIDE',          # /
-    "EE": 'EQUAL_SIGN',       # :
-    "LPAREN": 'LPAREN',       # (
-    "RPAREN": 'RPAREN',       # )
-    "COMMA": 'COMMA',         # ,
-    "NE": 'NE',               # !:
-    "LT": 'LESS_THAN',        # <
-    "GT": 'GREATER_THAN',     # >
-    "LTE": 'LTE',             # <:
-    "GTE": 'GTE',             # >:
+    
+    "=": 'ASSIGN',     
+    "+": 'PLUS',        
+    "-": 'MINUS',       
+    "*": 'MULTIPLY',        
+    "/": 'DIVIDE',        
+    "==": 'EQUAL_SIGN',       
+    "(": 'LPAREN',       
+    ")": 'RPAREN',       
+    ",": 'COMMA',
+    "#": 'COMMENT',        
+    
+    "!=": 'NE',             
+    "<": 'LESS_THAN',        
+    ">": 'GREATER_THAN',     
+    "<=": 'LTE',            
+    ">=": 'GTE',            
+
     "EOF": 'EOF',
 }
 
@@ -67,8 +72,12 @@ class Token:
 
     def __str__(self):
         if self.value:
-            return f'({self.type} : {self.value})'
-        return f'{self.type}'
+            return f'{self.type:15} : {self.value:>8}'
+        if self.type == 'EOF':
+            return "---EOF---"
+        for key, value in TOKENS.items():
+            if self.type == value:
+                return f'{self.type:15} : {key:>8}'
 
 
 class Lexer:
@@ -95,28 +104,28 @@ class Lexer:
                 tokens.append(self.create_identifier())
             elif self.current_char == '"':
                 tokens.append(self.create_string())
+            elif self.current_char == '#':
+                tokens.append(self.create_comment())
             elif self.current_char == '+':
-                tokens.append(Token(TOKENS["PLUS"], pos_start=self.pos))
+                tokens.append(Token(TOKENS["+"], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == '-':
-                tokens.append(Token(TOKENS["MINUS"], pos_start=self.pos))
+                tokens.append(Token(TOKENS["-"], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == '*':
-                tokens.append(Token(TOKENS["MUL"], pos_start=self.pos))
+                tokens.append(Token(TOKENS["*"], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == '/':
-                tokens.append(Token(TOKENS["DIV"], pos_start=self.pos))
+                tokens.append(Token(TOKENS["/"], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == '(':
-                tokens.append(Token(TOKENS["LPAREN"], pos_start=self.pos))
+                tokens.append(Token(TOKENS["("], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == ')':
-                tokens.append(Token(TOKENS["RPAREN"], pos_start=self.pos))
+                tokens.append(Token(TOKENS[")"], pos_start=self.pos))
                 self.next_pos()
             elif self.current_char == '!':
-                token, error = self.make_not_equals()
-                if error:
-                    return [], error
+                token = self.make_not_equals()
                 tokens.append(token)
             elif self.current_char == '=':
                 tokens.append(self.make_assign())
@@ -125,13 +134,25 @@ class Lexer:
             elif self.current_char == '>':
                 tokens.append(self.make_greater_than())
             elif self.current_char == ',':
-                tokens.append(Token(TOKENS["COMMA"], pos_start=self.pos))
+                tokens.append(Token(TOKENS[","], pos_start=self.pos))
                 self.next_pos()
             else:
                 self.next_pos()
 
         tokens.append(Token(TOKENS["EOF"], pos_start=self.pos))
         return tokens
+
+    def create_comment(self):
+        comment = ''
+        cur_line = self.pos.line
+        pos_start = self.pos.copy()
+        self.next_pos()
+
+        while self.current_char != None and self.current_char in string.printable and cur_line == self.pos.line:
+            comment += self.current_char
+            self.next_pos()
+
+        return Token(TOKENS["#"], comment.strip(), pos_start, self.pos)
 
     def create_number(self):
         num_str = ''
@@ -194,49 +215,51 @@ class Lexer:
 
         if self.current_char == '=':
             self.next_pos()
-            return Token(TOKENS["NE"], pos_start=pos_start, pos_end=self.pos), None
+            return Token(TOKENS["!="], pos_start=pos_start, pos_end=self.pos), None
 
         self.next_pos()
         return None
 
     def make_assign(self):
-        tok_type = TOKENS["ASSIGN"]
+        tok_type = TOKENS["="]
         pos_start = self.pos.copy()
         self.next_pos()
 
         if self.current_char == '=':
             self.next_pos()
-            tok_type = TOKENS["EE"]
+            tok_type = TOKENS["=="]
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
     def make_less_than(self):
-        tok_type = TOKENS["LT"]
+        tok_type = TOKENS["<"]
         pos_start = self.pos.copy()
         self.next_pos()
 
         if self.current_char == '=':
             self.next_pos()
-            tok_type = TOKENS["LTE"]
+            tok_type = TOKENS["<="]
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
     def make_greater_than(self):
-        tok_type = TOKENS["GT"]
+        tok_type = TOKENS[">"]
         pos_start = self.pos.copy()
         self.next_pos()
 
         if self.current_char == '=':
             self.next_pos()
-            tok_type = TOKENS["GTE"]
+            tok_type = TOKENS[">="]
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
 
 with open("source.txt") as text:
     text = text.read()
-# print(text)
+
 lexer = Lexer(text)
 tokens = lexer.create_tokens()
+
 for token in tokens:
+    print("+------------------------+")
     print(token)
