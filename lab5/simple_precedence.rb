@@ -1,3 +1,5 @@
+require "pp"
+
 input_grammar = {
   :N => ["S", "A", "B", "C"],
   :T => ["a", "b", "c", "d", "e", "f"],
@@ -37,7 +39,7 @@ loop do
     fr[x].push(*fr_res) unless fr_res.nil?
     lt_res = lt[lt_item]
     lt[x].push(*lt_res) unless lt_res.nil?
-    fr[x] = fr[x].uniq
+    fr[x] = fr[x].uniq # set
     lt[x] = lt[x].uniq
   end
 
@@ -45,11 +47,12 @@ loop do
 end
 
 puts "FIRST:"
-puts first
+pp(first)
 puts ""
 
 puts "LAST:"
-puts last
+pp(last)
+puts ""
 
 relations = []
 grammar[:P].each do |item|
@@ -93,7 +96,7 @@ relations.each do |item|
     relation_hash[x1][x2] = relation
   else
     if relation == "="
-      relation_hash[x1][x2] = relation_hash[x1][x2] + relation if relation_hash[x1][x2] != "="
+      relation_hash[x1][x2] = relation if relation_hash[x1][x2] != "="
     elsif relation_hash[x1][x2] == "="
       relation_hash[x1][x2] = relation + relation_hash[x1][x2]
     elsif relation_hash[x1][x2].include?(relation)
@@ -104,12 +107,17 @@ relations.each do |item|
   end
 end
 
-def dump_relation(relations, gramma)
-  token = (gramma[:N] + gramma[:T])
-  puts "     " + token.join("   ")
+puts "RELATIONS:"
+relation_hash.each do |item|
+  item[1].each_pair { |key, value| puts "#{item[0]} #{value} #{key}" }
+end
+
+def dump_relation(relations, grammar)
+  token = (grammar[:N] + grammar[:T])
+  puts " " * 5 + token.join(" " * 3)
   token.each do |item|
     r = relations[item]
-    row = token.collect do |k|
+    row = token.collect do |k| # each element, dup array
       v = r.nil? ? nil : r[k]
       if v.nil?
         "  "
@@ -154,13 +162,12 @@ def parse(grammar, relation_hash, input, start_sym)
       :stack => stack.dup,
       :input => input[cursor..-1],
     }
-    # puts "stack is #{stack}"
     rel = get_relation(relation_hash, top, next_token)
     obj[:precedence] = rel
     history.push(obj)
-    if rel == "<" || rel == "=" || rel == "<=" || rel.nil?
+    if rel == "<" || rel == "=" || rel == "=<" || rel.nil?
       # Shift
-      rel = "=" if rel.nil?
+      # rel = "=" if rel.nil?
       obj[:action] = "SHIFT"
       stack.push(rel[0])
       stack.push(input[cursor])
@@ -197,7 +204,7 @@ def parse(grammar, relation_hash, input, start_sym)
 end
 
 def dump_parse_result(result, history)
-  # determin column length
+  # determine column length
   title = ["STACK", "PRECEDENCE", "INPUT", "ACTION"]
   width = title.collect { |item| item.length }
   paddings = []
@@ -227,9 +234,8 @@ def dump_parse_result(result, history)
     )
   end
 
-  # dump
   puts title_row.join(" ")
-  prece_row.each do |row|
+  prece_row.collect do |row|
     puts row.join(" ")
   end
 end
@@ -237,8 +243,8 @@ end
 puts ""
 puts "Matrix of precedence relations:"
 dump_relation(relation_hash, grammar)
-
 puts ""
+
 puts "Analysis table:"
 result, hist = parse(grammar, relation_hash, input_language, input_start_sym)
 dump_parse_result(result, hist)
