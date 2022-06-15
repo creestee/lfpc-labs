@@ -41,25 +41,24 @@ def filter(word, to_replace, replacement):
     options = [(c,) if c != to_replace else (to_replace, replacement) for c in word]
     return ("".join(o) for o in product(*options))
 
-def remove_epsilon_util(grammar, k, p, n, i):
-    if i == n: 
-        return
-    cur_p = p[i]
-    for null_var in null_syms:
-        empty_p = filter(cur_p, null_var, '')
-    grammar[k] += empty_p
-    remove_epsilon_util(grammar, k, p, n, i + 1)
-    
-def remove_epsilon_p(grammar):    
+def remove_epsilon(grammar, k = '', p = '', n = 0, i = 0, trigger = False):
+    if trigger == True:
+        if i == n:
+            trigger = False
+            return
+        cur_p = p[i]
+        for null_var in null_syms:
+            empty_p = filter(cur_p, null_var, '')
+        grammar[k] += empty_p
+        return remove_epsilon(grammar, k, p, n, i + 1, True)
     for k, p in grammar.items():
-        remove_epsilon_util(grammar, k, p, len(p), 0)
-        
+        remove_epsilon(grammar, k, p, len(p), 0, True)
         grammar[k] = list(set(grammar[k]))
         if empty_sym in grammar[k]:
             grammar[k].remove(empty_sym)
     return grammar
 
-remove_epsilon_p(grammar_dict)
+remove_epsilon(grammar_dict)
 
 print('')
 print("Remove epsilon productions : ")
