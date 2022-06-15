@@ -1,4 +1,5 @@
 from itertools import product
+from lib2to3.pgen2 import grammar
 import pprint
 
 grammar_dict = {
@@ -41,8 +42,14 @@ def filter(word, to_replace, replacement):
     options = [(c,) if c != to_replace else (to_replace, replacement) for c in word]
     return ("".join(o) for o in product(*options))
 
-def remove_epsilon(grammar, k = '', p = '', n = 0, i = 0, trigger = False):
+keys = []
+
+for i in grammar_dict.keys():
+    keys.append(i)
+
+def remove_epsilon(grammar, k = '', p = '', n = 0, i = 0, trigger = False, iteration = 0):
     if trigger == True:
+        aux = iteration
         if i == n:
             trigger = False
             return
@@ -50,12 +57,12 @@ def remove_epsilon(grammar, k = '', p = '', n = 0, i = 0, trigger = False):
         for null_var in null_syms:
             empty_p = filter(cur_p, null_var, '')
         grammar[k] += empty_p
-        return remove_epsilon(grammar, k, p, n, i + 1, True)
-    for k, p in grammar.items():
-        remove_epsilon(grammar, k, p, len(p), 0, True)
-        grammar[k] = list(set(grammar[k]))
-        if empty_sym in grammar[k]:
-            grammar[k].remove(empty_sym)
+        return remove_epsilon(grammar, keys[iteration], grammar[keys[iteration]], n, i + 1, True, aux)
+    grammar[keys[iteration]] = list(set(grammar[keys[iteration]]))
+    if empty_sym in grammar[keys[iteration]]:
+        grammar[keys[iteration]].remove(empty_sym)
+    remove_epsilon(grammar, keys[iteration], grammar[keys[iteration]], len(grammar[keys[iteration]]), 0, True, iteration + 1)
+
     return grammar
 
 remove_epsilon(grammar_dict)
