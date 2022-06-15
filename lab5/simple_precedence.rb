@@ -132,11 +132,11 @@ def dump_relation(relations, grammar)
 end
 
 def finished?(stack, start_sym)
-  stack.join("").gsub("<", "") == "$#{start_sym}"
+  stack.join("").gsub("<", "") == "$#{start_sym}" or stack.join("").gsub(">", "") == "#{start_sym}$"
 end
 
 def get_relation(relation_hash, x1, x2)
-  if x1 == "$"
+  if x1 == "$" or x1.nil? # in case input was cleaned and last token was pulled to stack
     "<"
   elsif x2 == "$"
     ">"
@@ -148,36 +148,48 @@ end
 
 # 2. Parsing
 
-def parse(grammar, relation_hash, input, start_sym)
+def parse_rl(grammar, relation_hash, input, start_sym)
   result = true
   history = []
 
   stack = ["$"]
   input = input + "$"
-  cursor = input.length - 2
+  # cursor = 0
+  cursor = input.length - 2 # start position (last token position in input)
   while !(input[cursor] == "$" && finished?(stack, start_sym))
-    top = stack[0]
-    next_token = input[cursor]
-    obj = {
-      :stack => stack.dup,
-      :input => input[0..cursor],
-    }
-    rel = get_relation(relation_hash, next_token, top)
+    # top = stack[-1]
+    top = stack[0] # first element of stack
+    next_token = input[cursor] # last token to pull from input
+    if cursor == -1
+      obj = {
+        :stack => stack.dup,
+        :input => ("$"),
+      }
+    else
+      obj = {
+        :stack => stack.dup,
+        :input => (input[0..cursor] + "$"),
+      }
+    end
+    rel = get_relation(relation_hash, next_token, top) # relation between first element of stack and pulled token
     obj[:precedence] = rel
     history.push(obj)
-    if rel == ">" || rel == "=" || rel == "=>" || rel.nil?
+    if rel == ">" || rel == "=" || rel.nil? # shifting inversed because R -> L
       # Shift
+      # rel = "=" if rel.nil?
       obj[:action] = "SHIFT"
-      stack.insert(0, rel[0])
-      stack.insert(0, input[cursor])
-      cursor -= 1
-    elsif rel == "<"
-      #     # Reduce
-      start = 0
-      while (stack[start + 1] != ">")
-        start += 1
+      stack.insert(0, rel) # inserting relation into stack
+      if not input[cursor].nil?
+        stack.insert(0, input[cursor]) # inserting token into stack
       end
-      exp = stack[0..start].join("").gsub("=", "")
+      cursor -= 1
+    elsif rel == "<" # shifting inversed because R -> L
+      # Reduce
+      end_pos = 0
+      while (stack[0 + end_pos] != ">") # finding the closest one > that is closing
+        end_pos += 1
+      end
+      exp = stack[0..end_pos - 1].join("").gsub("=", "") # joining where is relation '=' between
       f = grammar[:P].find do |item|
         item[1] == exp
       end
@@ -187,15 +199,69 @@ def parse(grammar, relation_hash, input, start_sym)
         break
       end
       obj[:action] = "REDUCE (#{f[0]} -> #{f[1]})"
-      red_rel = get_relation(relation_hash, f[0], stack[2])
-      stack = [f[0], red_rel, *stack[2..-1]]
-      pp(stack)
+      red_rel = get_relation(relation_hash, f[0], stack[end_pos + 1])
+      stack = [f[0], red_rel, *stack[(end_pos + 1)..-1]]
     end
   end
   if result
     history.push({
                    :stack => stack.dup,
-                   :input => input[0..cursor],
+                   :input => "$",
+                   :precedence => get_relation(relation_hash, input[cursor], stack[0]),
+                   :action => "ACCEPT",
+                 })
+  end
+  [result, history]
+end
+
+def parse_lr(grammar, relation_hash, input, start_sym)
+  result = true
+  history = []
+
+  stack = ["$"]
+  input = input + "$"
+  cursor = 0
+  while !(input[cursor] == "$" && finished?(stack, start_sym))
+    top = stack[-1]
+    next_token = input[cursor]
+    obj = {
+      :stack => stack.dup,
+      :input => input[cursor..-1],
+    }
+    rel = get_relation(relation_hash, top, next_token)
+    obj[:precedence] = rel
+    history.push(obj)
+    if rel == "<" || rel == "=" || rel == "=<" || rel.nil?
+      # Shift
+      # rel = "=" if rel.nil?
+      obj[:action] = "SHIFT"
+      stack.push(rel[0])
+      stack.push(input[cursor])
+      cursor += 1
+    elsif rel == ">"
+      # Reduce
+      start = 0
+      while (stack[-1 - start] != "<")
+        start += 1
+      end
+      exp = stack[(-start)..-1].join("").gsub("=", "")
+      f = grammar[:P].find do |item|
+        item[1] == exp
+      end
+      if f.nil?
+        result = false
+        obj[:action] = "REJECT"
+        break
+      end
+      obj[:action] = "REDUCE (#{f[0]} -> #{f[1]})"
+      red_rel = get_relation(relation_hash, stack[-1 - start - 1], f[0])
+      stack = [*stack[0..(-1 - start - 1)], red_rel, f[0]]
+    end
+  end
+  if result
+    history.push({
+                   :stack => stack.dup,
+                   :input => input[cursor..-1],
                    :precedence => get_relation(relation_hash, stack[-1], input[cursor]),
                    :action => "ACCEPT",
                  })
@@ -246,5 +312,5 @@ dump_relation(relation_hash, grammar)
 puts ""
 
 puts "Analysis table:"
-result, hist = parse(grammar, relation_hash, input_language, input_start_sym)
+result, hist = parse_rl(grammar, relation_hash, input_language, input_start_sym)
 dump_parse_result(result, hist)
