@@ -154,31 +154,30 @@ def parse(grammar, relation_hash, input, start_sym)
 
   stack = ["$"]
   input = input + "$"
-  cursor = 0
+  cursor = input.length - 2
   while !(input[cursor] == "$" && finished?(stack, start_sym))
-    top = stack[-1]
+    top = stack[0]
     next_token = input[cursor]
     obj = {
       :stack => stack.dup,
-      :input => input[cursor..-1],
+      :input => input[0..cursor],
     }
-    rel = get_relation(relation_hash, top, next_token)
+    rel = get_relation(relation_hash, next_token, top)
     obj[:precedence] = rel
     history.push(obj)
-    if rel == "<" || rel == "=" || rel == "=<" || rel.nil?
+    if rel == ">" || rel == "=" || rel == "=>" || rel.nil?
       # Shift
-      # rel = "=" if rel.nil?
       obj[:action] = "SHIFT"
-      stack.push(rel[0])
-      stack.push(input[cursor])
-      cursor += 1
-    elsif rel == ">"
-      # Reduce
+      stack.insert(0, rel[0])
+      stack.insert(0, input[cursor])
+      cursor -= 1
+    elsif rel == "<"
+      #     # Reduce
       start = 0
-      while (stack[-1 - start] != "<")
+      while (stack[start + 1] != ">")
         start += 1
       end
-      exp = stack[(-start)..-1].join("").gsub("=", "")
+      exp = stack[0..start].join("").gsub("=", "")
       f = grammar[:P].find do |item|
         item[1] == exp
       end
@@ -188,14 +187,15 @@ def parse(grammar, relation_hash, input, start_sym)
         break
       end
       obj[:action] = "REDUCE (#{f[0]} -> #{f[1]})"
-      red_rel = get_relation(relation_hash, stack[-1 - start - 1], f[0])
-      stack = [*stack[0..(-1 - start - 1)], red_rel, f[0]]
+      red_rel = get_relation(relation_hash, f[0], stack[2])
+      stack = [f[0], red_rel, *stack[2..-1]]
+      pp(stack)
     end
   end
   if result
     history.push({
                    :stack => stack.dup,
-                   :input => input[cursor..-1],
+                   :input => input[0..cursor],
                    :precedence => get_relation(relation_hash, stack[-1], input[cursor]),
                    :action => "ACCEPT",
                  })
